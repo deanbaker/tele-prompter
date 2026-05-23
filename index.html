@@ -30,6 +30,10 @@
 
       <div id="rec-indicator" hidden>● REC <span id="rec-time">0:00</span></div>
 
+      <div id="countdown" hidden aria-live="assertive">
+        <div id="countdown-number">3</div>
+      </div>
+
       <div id="bottom-bar">
         <button id="play-toggle" class="bottom-btn">▶︎</button>
         <button id="record-toggle" class="bottom-btn record">⏺</button>
@@ -73,6 +77,11 @@
       <label class="block">
         <span>Eye-line position <output id="eye-val">35</output>%</span>
         <input id="eye-line" type="range" min="10" max="80" step="1" value="35" />
+      </label>
+
+      <label class="block">
+        <span>Countdown before recording <output id="countdown-val">3</output> s</span>
+        <input id="countdown-input" type="range" min="0" max="10" step="1" value="3" />
       </label>
 
       <div class="row toggles">

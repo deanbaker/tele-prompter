@@ -11,6 +11,7 @@ type Settings = {
   mirror: boolean;
   dim: boolean;
   scriptText: string;
+  countdown: number;
 };
 
 type SavedScript = {
@@ -29,6 +30,7 @@ const defaultSettings: Settings = {
   eyeLine: 35,
   mirror: false,
   dim: true,
+  countdown: 3,
   scriptText:
     'Welcome to your teleprompter.\n\nTap the gear in the top-right to edit this script, or paste in your own.\n\nUse the play button to practice without recording, or the red button to record. Adjust speed and font size from settings until it feels right.\n\nThe red horizontal line is your eye-line — try to keep your gaze near it so you stay locked on the lens.',
 };
@@ -93,6 +95,8 @@ const els = {
   fontVal: $<HTMLOutputElement>('#font-val'),
   eyeLineInput: $<HTMLInputElement>('#eye-line'),
   eyeVal: $<HTMLOutputElement>('#eye-val'),
+  countdownInput: $<HTMLInputElement>('#countdown-input'),
+  countdownVal: $<HTMLOutputElement>('#countdown-val'),
   mirror: $<HTMLInputElement>('#mirror-toggle'),
   contrast: $<HTMLInputElement>('#contrast-toggle'),
 
@@ -102,6 +106,9 @@ const els = {
 
   recIndicator: $<HTMLDivElement>('#rec-indicator'),
   recTime: $<HTMLSpanElement>('#rec-time'),
+
+  countdownOverlay: $<HTMLDivElement>('#countdown'),
+  countdownNumber: $<HTMLDivElement>('#countdown-number'),
 
   postRecord: $<HTMLElement>('#post-record'),
   postClose: $<HTMLButtonElement>('#post-close'),
@@ -125,6 +132,8 @@ function applySettingsToUI() {
   els.fontVal.value = String(settings.fontSize);
   els.eyeLineInput.value = String(settings.eyeLine);
   els.eyeVal.value = String(settings.eyeLine);
+  els.countdownInput.value = String(settings.countdown);
+  els.countdownVal.value = String(settings.countdown);
   els.mirror.checked = settings.mirror;
   els.contrast.checked = settings.dim;
 
@@ -218,6 +227,12 @@ els.eyeLineInput.addEventListener('input', () => {
   settings.eyeLine = Number(els.eyeLineInput.value);
   els.eyeVal.value = String(settings.eyeLine);
   els.eyeLine.style.top = `${settings.eyeLine}%`;
+  persist();
+});
+
+els.countdownInput.addEventListener('input', () => {
+  settings.countdown = Number(els.countdownInput.value);
+  els.countdownVal.value = String(settings.countdown);
   persist();
 });
 
@@ -353,6 +368,7 @@ els.prompter.addEventListener('click', () => {
 $<HTMLElement>('#stage').addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
   if (target.closest('button, a, #settings-panel, #post-record')) return;
+  if (isCountingDown()) return;
   if (scrolling) pausePrompter();
   else startPrompter();
 });
@@ -461,9 +477,60 @@ function onRecorderStop() {
   els.postRecord.hidden = false;
 }
 
+let countdownTimerId: number | null = null;
+
+function isCountingDown() {
+  return countdownTimerId !== null;
+}
+
+function showCountdownNumber(n: number) {
+  els.countdownNumber.textContent = String(n);
+  els.countdownOverlay.hidden = false;
+  // Re-trigger the CSS animation by forcing a reflow between resets.
+  els.countdownNumber.style.animation = 'none';
+  void els.countdownNumber.offsetWidth;
+  els.countdownNumber.style.animation = '';
+}
+
+function cancelCountdown() {
+  if (countdownTimerId !== null) {
+    clearInterval(countdownTimerId);
+    countdownTimerId = null;
+  }
+  els.countdownOverlay.hidden = true;
+  els.recordToggle.classList.remove('arming');
+}
+
+function beginRecordingFlow() {
+  const seconds = Math.max(0, Math.floor(settings.countdown));
+  if (seconds === 0) {
+    startRecording();
+    return;
+  }
+  let remaining = seconds;
+  showCountdownNumber(remaining);
+  els.recordToggle.classList.add('arming');
+  countdownTimerId = window.setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      cancelCountdown();
+      startRecording();
+    } else {
+      showCountdownNumber(remaining);
+    }
+  }, 1000);
+}
+
 els.recordToggle.addEventListener('click', () => {
-  if (recorder && recorder.state === 'recording') stopRecording();
-  else startRecording();
+  if (isCountingDown()) {
+    cancelCountdown();
+    return;
+  }
+  if (recorder && recorder.state === 'recording') {
+    stopRecording();
+    return;
+  }
+  beginRecordingFlow();
 });
 
 els.postClose.addEventListener('click', () => {

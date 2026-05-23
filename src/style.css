@@ -202,6 +202,48 @@ body {
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* ---------- Countdown overlay ---------- */
+
+#countdown {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+#countdown-number {
+  font-size: 30vmin;
+  line-height: 1;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.7), 0 0 4px rgba(0, 0, 0, 0.9);
+  animation: countdown-pulse 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes countdown-pulse {
+  0% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+}
+
+.bottom-btn.record.arming {
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
 /* ---------- Bottom bar ---------- */
 
 #bottom-bar {
