@@ -164,4 +164,4 @@ Not committed to any of these — just things worth considering:
 
 ## License
 
-Unlicensed / personal project. Add a license file if that changes.
+[MIT](LICENSE) © 2026 Dean Baker
