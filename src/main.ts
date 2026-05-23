@@ -446,6 +446,7 @@ function stopRecording() {
   }
   releaseWakeLock();
   pausePrompter();
+  resetPrompter();
 }
 
 function onRecorderStop() {
