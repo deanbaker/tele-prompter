@@ -1,0 +1,376 @@
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --muted: rgba(255, 255, 255, 0.6);
+  --accent: #ff3b30;
+  --panel: rgba(15, 15, 17, 0.92);
+  --chip: rgba(0, 0, 0, 0.55);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---------- Stage (camera + overlay) ---------- */
+
+#stage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+#preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+  /* Front camera preview should mirror so the user sees themselves naturally */
+  transform: scaleX(-1);
+}
+
+#preview.rear {
+  transform: none;
+}
+
+/* ---------- Prompter overlay ---------- */
+
+#prompter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+#prompter-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  padding: 12vh 6vw;
+  display: flex;
+  justify-content: center;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 18%,
+    #000 82%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 18%,
+    #000 82%,
+    transparent 100%
+  );
+}
+
+#prompter-text {
+  font-size: 42px;
+  line-height: 1.35;
+  font-weight: 600;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8), 0 0 2px rgba(0, 0, 0, 0.9);
+  width: min(720px, 100%);
+  transform: translateY(0px);
+  will-change: transform;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#prompter.dim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.45) 20%,
+    rgba(0, 0, 0, 0.45) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+#prompter.mirror #prompter-text {
+  /* Flip text horizontally for use with a teleprompter rig mirror */
+  /* Applied to inner so translateY math stays correct */
+  filter: none;
+}
+
+#prompter.mirror #prompter-track {
+  transform: scaleX(-1);
+}
+
+#prompter-eye-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 59, 48, 0.55);
+  box-shadow: 0 0 6px rgba(255, 59, 48, 0.45);
+  top: 35%;
+  pointer-events: none;
+}
+
+/* ---------- Top-right settings chip ---------- */
+
+.chip {
+  background: var(--chip);
+  color: var(--fg);
+  border: none;
+  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#settings-toggle {
+  position: absolute;
+  top: calc(var(--safe-top) + 12px);
+  right: 12px;
+  z-index: 5;
+}
+
+/* ---------- Recording indicator ---------- */
+
+#rec-indicator {
+  position: absolute;
+  top: calc(var(--safe-top) + 16px);
+  left: 16px;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#rec-indicator::before {
+  /* Replace static dot in HTML with a pulsing one */
+}
+
+#rec-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+#rec-indicator {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ---------- Bottom bar ---------- */
+
+#bottom-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--safe-bottom) + 16px);
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  z-index: 5;
+}
+
+.bottom-btn {
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  width: 64px;
+  height: 64px;
+  font-size: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.bottom-btn.record {
+  background: var(--accent);
+  border-color: rgba(255, 255, 255, 0.25);
+  width: 78px;
+  height: 78px;
+  font-size: 28px;
+}
+
+.bottom-btn.active {
+  background: #fff;
+  color: #000;
+}
+
+.bottom-btn.record.active {
+  background: #fff;
+  color: var(--accent);
+}
+
+/* ---------- Settings panel ---------- */
+
+#settings-panel,
+#post-record {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: calc(var(--safe-top) + 16px) 18px calc(var(--safe-bottom) + 18px);
+  overflow-y: auto;
+}
+
+#settings-panel header,
+#post-record header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+#settings-panel h1,
+#post-record h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+label.block {
+  display: block;
+  margin: 18px 0;
+}
+
+label.block > span {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+textarea,
+select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+textarea {
+  min-height: 140px;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 14px 0;
+  flex-wrap: wrap;
+}
+
+.row.toggles {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.toggle input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+button.ghost,
+a.ghost {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button.ghost.danger,
+a.ghost.danger {
+  border-color: rgba(255, 59, 48, 0.4);
+  color: #ff6961;
+}
+
+.hint {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ---------- Post-record playback ---------- */
+
+#playback {
+  width: 100%;
+  max-height: 60vh;
+  background: #000;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}

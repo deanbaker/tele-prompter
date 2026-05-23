@@ -1,0 +1,16 @@
+{
+  "name": "tele-prompter",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.0.0",
+    "typescript": "^5.6.3",
+    "vite": "^7.0.0"
+  }
+}

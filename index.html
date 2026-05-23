@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Prompter" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <title>Prompter</title>
+  </head>
+  <body>
+    <main id="stage">
+      <video id="preview" playsinline muted autoplay></video>
+
+      <div id="prompter" aria-hidden="true">
+        <div id="prompter-track">
+          <div id="prompter-text"></div>
+        </div>
+        <div id="prompter-eye-line"></div>
+      </div>
+
+      <button id="settings-toggle" class="chip" aria-label="Open settings">⚙︎</button>
+
+      <div id="rec-indicator" hidden>● REC <span id="rec-time">0:00</span></div>
+
+      <div id="bottom-bar">
+        <button id="play-toggle" class="bottom-btn">▶︎</button>
+        <button id="record-toggle" class="bottom-btn record">⏺</button>
+        <button id="flip-camera" class="bottom-btn">⤾</button>
+      </div>
+    </main>
+
+    <section id="settings-panel" hidden>
+      <header>
+        <h1>Prompter</h1>
+        <button id="settings-close" class="chip" aria-label="Close">✕</button>
+      </header>
+
+      <label class="block">
+        <span>Script</span>
+        <textarea
+          id="script-input"
+          rows="8"
+          placeholder="Paste or type your script here…"
+        ></textarea>
+      </label>
+
+      <div class="row">
+        <button id="save-script" class="ghost">Save</button>
+        <select id="script-library" aria-label="Saved scripts">
+          <option value="">— saved scripts —</option>
+        </select>
+        <button id="delete-script" class="ghost danger">Delete</button>
+      </div>
+
+      <label class="block">
+        <span>Speed <output id="speed-val">60</output> px/s</span>
+        <input id="speed" type="range" min="10" max="300" step="5" value="60" />
+      </label>
+
+      <label class="block">
+        <span>Font size <output id="font-val">42</output> px</span>
+        <input id="font-size" type="range" min="24" max="120" step="2" value="42" />
+      </label>
+
+      <label class="block">
+        <span>Eye-line position <output id="eye-val">35</output>%</span>
+        <input id="eye-line" type="range" min="10" max="80" step="1" value="35" />
+      </label>
+
+      <div class="row toggles">
+        <label class="toggle">
+          <input id="mirror-toggle" type="checkbox" />
+          <span>Mirror text (for rig)</span>
+        </label>
+        <label class="toggle">
+          <input id="contrast-toggle" type="checkbox" checked />
+          <span>Dim background behind text</span>
+        </label>
+      </div>
+
+      <footer class="hint">
+        Tap ⚙︎ to reopen settings. Tap ▶︎ to start the prompter without recording, ⏺ to record.
+      </footer>
+    </section>
+
+    <section id="post-record" hidden>
+      <header>
+        <h1>Recording</h1>
+        <button id="post-close" class="chip" aria-label="Close">✕</button>
+      </header>
+      <video id="playback" controls playsinline></video>
+      <div class="row">
+        <a id="download-link" class="ghost" download="prompter-recording.mp4">Download</a>
+        <button id="share-btn" class="ghost" hidden>Share…</button>
+        <button id="discard-btn" class="ghost danger">Discard</button>
+      </div>
+    </section>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
