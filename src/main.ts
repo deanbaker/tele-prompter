@@ -221,6 +221,7 @@ els.fontSize.addEventListener('input', () => {
   els.fontVal.value = String(settings.fontSize);
   els.promptText.style.fontSize = `${settings.fontSize}px`;
   persist();
+  if (!scrolling) resetPrompter();
 });
 
 els.eyeLineInput.addEventListener('input', () => {
@@ -228,6 +229,7 @@ els.eyeLineInput.addEventListener('input', () => {
   els.eyeVal.value = String(settings.eyeLine);
   els.eyeLine.style.top = `${settings.eyeLine}%`;
   persist();
+  if (!scrolling) resetPrompter();
 });
 
 els.countdownInput.addEventListener('input', () => {
@@ -315,11 +317,38 @@ els.flipCamera.addEventListener('click', async () => {
 
 let scrolling = false;
 let scrollPos = 0; // negative as it scrolls up
+let scrollLimit = 0; // scrollPos at which the last line reaches the eye-line
 let lastTs = 0;
 
+// True glyph bounds of the script text. A Range ignores the flex container's
+// stretch, so .bottom is the real last line — not the padded element box.
+function measureText(): DOMRect {
+  const range = document.createRange();
+  range.selectNodeContents(els.promptText);
+  return range.getBoundingClientRect();
+}
+
 function resetPrompter() {
-  scrollPos = 0;
+  // Position the text so the first line's vertical center sits on the eye-line,
+  // and compute where to stop so the last line ends on the eye-line too.
+  // Measured live so it stays correct when font size, eye-line, or viewport change.
   els.promptText.style.transform = 'translateY(0px)';
+  const textRect = measureText();
+  if (textRect.height === 0) {
+    // Layout not ready yet (e.g. first boot before paint); retry next frame.
+    scrollPos = 0;
+    scrollLimit = 0;
+    requestAnimationFrame(resetPrompter);
+    return;
+  }
+  const eyeRect = els.eyeLine.getBoundingClientRect();
+  const lineHeight =
+    parseFloat(getComputedStyle(els.promptText).lineHeight) || settings.fontSize * 1.35;
+  const eyeY = eyeRect.top + eyeRect.height / 2;
+  scrollPos = eyeY - textRect.top - lineHeight / 2;
+  // Never above the start, so a script too short to scroll simply holds still.
+  scrollLimit = Math.min(scrollPos, eyeY - textRect.bottom + lineHeight / 2);
+  els.promptText.style.transform = `translateY(${scrollPos}px)`;
 }
 
 function startPrompter() {
@@ -343,11 +372,11 @@ function tick(ts: number) {
   lastTs = ts;
   scrollPos -= settings.speed * dt;
 
-  // Stop when the bottom of the text has scrolled past the top of the track.
-  const textHeight = els.promptText.getBoundingClientRect().height;
-  const trackHeight = els.promptTrack.getBoundingClientRect().height;
-  const limit = -(textHeight + trackHeight * 0.5);
-  if (scrollPos < limit) {
+  // Stop once the last line has scrolled up to the eye-line (symmetric with the
+  // start, where resetPrompter() lands the first line there).
+  if (scrollPos <= scrollLimit) {
+    scrollPos = scrollLimit;
+    els.promptText.style.transform = `translateY(${scrollPos}px)`;
     pausePrompter();
     return;
   }
@@ -576,6 +605,7 @@ document.addEventListener('visibilitychange', async () => {
 async function boot() {
   applySettingsToUI();
   refreshLibrary();
+  resetPrompter();
 
   // iOS requires a user gesture to start camera/mic. If permissions were already granted,
   // this will resolve quickly. Otherwise, we surface the settings panel so the user can tap.
