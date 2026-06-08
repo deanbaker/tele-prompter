@@ -1,5 +1,5 @@
 {
-  "name": "prompter",
+  "name": "tele-prompter",
   "compatibility_date": "2026-05-24",
   "assets": {
     "directory": "./dist",
