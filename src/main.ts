@@ -188,6 +188,7 @@ els.scriptLibrary.addEventListener('change', () => {
   els.scriptInput.value = script.text;
   settings.scriptText = script.text;
   applySettingsToStage();
+  resetPrompter();
   persist();
 });
 
@@ -221,7 +222,7 @@ els.fontSize.addEventListener('input', () => {
   els.fontVal.value = String(settings.fontSize);
   els.promptText.style.fontSize = `${settings.fontSize}px`;
   persist();
-  if (!scrolling) resetPrompter();
+  refitPrompter();
 });
 
 els.eyeLineInput.addEventListener('input', () => {
@@ -229,7 +230,7 @@ els.eyeLineInput.addEventListener('input', () => {
   els.eyeVal.value = String(settings.eyeLine);
   els.eyeLine.style.top = `${settings.eyeLine}%`;
   persist();
-  if (!scrolling) resetPrompter();
+  refitPrompter();
 });
 
 els.countdownInput.addEventListener('input', () => {
@@ -267,8 +268,10 @@ els.settingsClose.addEventListener('click', () => {
 
 let currentStream: MediaStream | null = null;
 let facing: 'user' | 'environment' = 'user';
+let cameraRequest = 0; // bumps per startCamera() call; only the latest may install its stream
 
 async function startCamera() {
+  const req = ++cameraRequest;
   stopCamera();
 
   if (!navigator.mediaDevices?.getUserMedia) {
@@ -282,7 +285,7 @@ async function startCamera() {
   }
 
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: facing,
         width: { ideal: 1920 },
@@ -290,9 +293,16 @@ async function startCamera() {
       },
       audio: true,
     });
+    if (req !== cameraRequest) {
+      // A newer request (e.g. a second flip tap) superseded this one.
+      for (const track of stream.getTracks()) track.stop();
+      return;
+    }
+    currentStream = stream;
     els.preview.srcObject = currentStream;
     els.preview.classList.toggle('rear', facing === 'environment');
   } catch (err) {
+    if (req !== cameraRequest) return;
     console.error('Camera error', err);
     alert(
       `Couldn't access the camera: ${(err as Error).message}\n\nMake sure you've granted camera + mic permission in the browser settings.`,
@@ -319,6 +329,7 @@ els.flipCamera.addEventListener('click', async () => {
 
 let scrolling = false;
 let scrollPos = 0; // negative as it scrolls up
+let scrollStart = 0; // scrollPos at which the first line sits on the eye-line
 let scrollLimit = 0; // scrollPos at which the last line reaches the eye-line
 let lastTs = 0;
 
@@ -330,28 +341,57 @@ function measureText(): DOMRect {
   return range.getBoundingClientRect();
 }
 
-function resetPrompter() {
-  // Position the text so the first line's vertical center sits on the eye-line,
-  // and compute where to stop so the last line ends on the eye-line too.
-  // Measured live so it stays correct when font size, eye-line, or viewport change.
-  els.promptText.style.transform = 'translateY(0px)';
+function applyScroll() {
+  els.promptText.style.transform = `translateY(${scrollPos}px)`;
+}
+
+// Start and stop positions for the current layout: the first line's vertical
+// center on the eye-line, and the last line's. Measured live so it stays correct
+// when font size, eye-line, or viewport change. Null if layout isn't ready yet.
+function measurePrompter(): { start: number; limit: number } | null {
   const textRect = measureText();
-  if (textRect.height === 0) {
-    // Layout not ready yet (e.g. first boot before paint); retry next frame.
-    scrollPos = 0;
-    scrollLimit = 0;
-    requestAnimationFrame(resetPrompter);
-    return;
-  }
+  if (textRect.height === 0) return null;
+  // The rect includes the current translateY; remove it to get the resting layout.
+  const top = textRect.top - scrollPos;
+  const bottom = textRect.bottom - scrollPos;
   const eyeRect = els.eyeLine.getBoundingClientRect();
   const lineHeight =
     parseFloat(getComputedStyle(els.promptText).lineHeight) || settings.fontSize * 1.35;
   const eyeY = eyeRect.top + eyeRect.height / 2;
-  scrollPos = eyeY - textRect.top - lineHeight / 2;
+  const start = eyeY - top - lineHeight / 2;
   // Never above the start, so a script too short to scroll simply holds still.
-  scrollLimit = Math.min(scrollPos, eyeY - textRect.bottom + lineHeight / 2);
-  els.promptText.style.transform = `translateY(${scrollPos}px)`;
+  const limit = Math.min(start, eyeY - bottom + lineHeight / 2);
+  return { start, limit };
 }
+
+function resetPrompter() {
+  const m = measurePrompter();
+  if (!m) {
+    // Layout not ready yet (e.g. first boot before paint); retry next frame.
+    scrollPos = scrollStart = scrollLimit = 0;
+    applyScroll();
+    requestAnimationFrame(resetPrompter);
+    return;
+  }
+  scrollPos = scrollStart = m.start;
+  scrollLimit = m.limit;
+  applyScroll();
+}
+
+// Re-measure after a layout change, keeping the reader's place in the script
+// (as a fraction of the way through), so it's safe mid-scroll.
+function refitPrompter() {
+  const span = scrollStart - scrollLimit;
+  const progress = span > 0 ? (scrollStart - scrollPos) / span : 0;
+  const m = measurePrompter();
+  if (!m) return resetPrompter();
+  scrollStart = m.start;
+  scrollLimit = m.limit;
+  scrollPos = m.start - progress * (m.start - m.limit);
+  applyScroll();
+}
+
+window.addEventListener('resize', refitPrompter);
 
 function startPrompter() {
   if (scrolling) return;
@@ -370,7 +410,8 @@ function pausePrompter() {
 
 function tick(ts: number) {
   if (!scrolling) return;
-  const dt = (ts - lastTs) / 1000;
+  // Clamp so a long gap (tab backgrounded, rAF paused) doesn't jump the text.
+  const dt = Math.min((ts - lastTs) / 1000, 0.1);
   lastTs = ts;
   scrollPos -= settings.speed * dt;
 
@@ -378,12 +419,12 @@ function tick(ts: number) {
   // start, where resetPrompter() lands the first line there).
   if (scrollPos <= scrollLimit) {
     scrollPos = scrollLimit;
-    els.promptText.style.transform = `translateY(${scrollPos}px)`;
+    applyScroll();
     pausePrompter();
     return;
   }
 
-  els.promptText.style.transform = `translateY(${scrollPos}px)`;
+  applyScroll();
   requestAnimationFrame(tick);
 }
 
