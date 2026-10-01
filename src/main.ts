@@ -307,6 +307,8 @@ function stopCamera() {
 }
 
 els.flipCamera.addEventListener('click', async () => {
+  // Swapping streams ends the tracks the recorder is consuming, which kills the take.
+  if (isCountingDown() || recorder?.state === 'recording') return;
   facing = facing === 'user' ? 'environment' : 'user';
   await startCamera();
 });
@@ -465,8 +467,12 @@ function updateRecTime() {
 }
 
 function stopRecording() {
-  if (!recorder) return;
-  recorder.stop();
+  if (!recorder || recorder.state === 'inactive') return;
+  recorder.stop(); // teardown happens in onRecorderStop
+}
+
+// Runs however the recording ends — user tap, or iOS stopping it on backgrounding.
+function teardownRecordingUI() {
   els.recIndicator.hidden = true;
   els.recordToggle.classList.remove('active');
   if (recTimerId !== null) {
@@ -478,9 +484,23 @@ function stopRecording() {
   resetPrompter();
 }
 
+let playbackUrl: string | null = null;
+
+function releasePlayback() {
+  if (playbackUrl) URL.revokeObjectURL(playbackUrl);
+  playbackUrl = null;
+  els.shareBtn.onclick = null; // its closure holds the File (and the blob)
+  els.playback.removeAttribute('src');
+  els.playback.load();
+}
+
 function onRecorderStop() {
+  teardownRecordingUI();
+  releasePlayback();
   const blob = new Blob(recordedChunks, { type: recordedMimeType });
+  recordedChunks = [];
   const url = URL.createObjectURL(blob);
+  playbackUrl = url;
   els.playback.src = url;
 
   const ext = recordedMimeType.includes('webm') ? 'webm' : 'mp4';
@@ -498,9 +518,7 @@ function onRecorderStop() {
     : null;
 
   els.discardBtn.onclick = () => {
-    URL.revokeObjectURL(url);
-    els.playback.removeAttribute('src');
-    els.playback.load();
+    releasePlayback();
     els.postRecord.hidden = true;
   };
 
@@ -532,6 +550,9 @@ function cancelCountdown() {
 }
 
 function beginRecordingFlow() {
+  // Every take starts from the top, regardless of where a practice run left off.
+  pausePrompter();
+  resetPrompter();
   const seconds = Math.max(0, Math.floor(settings.countdown));
   if (seconds === 0) {
     startRecording();
@@ -564,6 +585,8 @@ els.recordToggle.addEventListener('click', () => {
 });
 
 els.postClose.addEventListener('click', () => {
+  // Nothing can reopen this panel, so the take is unreachable once it closes.
+  releasePlayback();
   els.postRecord.hidden = true;
 });
 
